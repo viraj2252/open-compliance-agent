@@ -205,3 +205,10 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# Compliance RAG specific
+data/vector_store/
+data/*.db
+data/*.duckdb
+compliance_rag/__pycache__/
+.DS_Store

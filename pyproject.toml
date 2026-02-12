@@ -1,0 +1,37 @@
+[tool.poetry]
+name = "compliance-rag"
+version = "0.1.0"
+description = "Self-Improving Compliance Assistant RAG"
+authors = ["VJ <vj@example.com>"]
+
+[tool.poetry.dependencies]
+python = "^3.12"
+langchain = "*"
+langgraph = "*"
+langchain-community = "*"
+langchain-openai = "*"
+langchain-core = "*"
+langchain-ollama = "*" # Added to support the config.py implementation
+ollama = "*"
+pandas = "*"
+duckdb = "*"
+faiss-cpu = "*"
+sentence-transformers = "*"
+biopython = "*"
+pypdf = "*"
+pydantic = "*"
+lxml = "*"
+html2text = "*"
+beautifulsoup4 = "*"
+matplotlib = "*"
+fastapi = "*"
+uvicorn = "*"
+python-dotenv = "*"
+
+[tool.poetry.group.dev.dependencies]
+ipykernel = "^6.29.0"
+notebook = "^7.2.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
