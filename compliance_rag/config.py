@@ -1,5 +1,6 @@
 import os
 from langchain_ollama import ChatOllama, OllamaEmbeddings
+from langchain_openai import ChatOpenAI
 
 # Load environment variables
 from dotenv import load_dotenv
@@ -14,7 +15,7 @@ OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://host.docker.internal:1143
 llm_config = {
     # Planner: Needs strong instruction following to break down complex compliance queries
     "planner": ChatOllama(
-        model="llama3.1:8b-instruct", 
+        model="llama3.1", 
         base_url=OLLAMA_BASE_URL,
         temperature=0.0, 
         format="json"
@@ -22,24 +23,23 @@ llm_config = {
 
     # Synthesizer: Needs to write clear, professional, and well-cited answers
     "synthesizer": ChatOllama(
-        model="qwen2.5:7b", 
+        model="qwen2.5", 
         base_url=OLLAMA_BASE_URL,
         temperature=0.2
     ),
 
     # SQL Analyst: Needs to generate valid SQL for structured metadata queries
     "sql_analyst": ChatOllama(
-        model="qwen2.5:7b", 
+        model="qwen2.5", 
         base_url=OLLAMA_BASE_URL,
         temperature=0.0
     ),
 
-    # Director: High-level reasoning for the evolution loop
-    "director": ChatOllama(
-        model="llama3.1:70b", 
-        base_url=OLLAMA_BASE_URL,
-        temperature=0.0, 
-        format="json"
+    # Director: Switched to gpt-4o-mini (OpenAI) for superior reasoning
+    # This model handles judging, diagnosis, and prompt evolution.
+    "director": ChatOpenAI(
+        model="gpt-4o-mini", 
+        temperature=0.0
     ),
 
     # Embeddings: High-performance vector embeddings for retrieval
