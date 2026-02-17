@@ -1,15 +1,20 @@
 import json
+import logging
 from langchain_core.messages import HumanMessage
 from compliance_rag.config import llm_config
 from compliance_rag.core.sop import ComplianceSOP
 from compliance_rag.evaluation.models import EvaluationResult
+from compliance_rag.utils.json_parser import parse_llm_json
+
+logger = logging.getLogger("compliance_rag.evolution")
+
 
 def diagnose_failure(request: str, response: str, evaluation: EvaluationResult) -> str:
     """
     The Performance Diagnostician Agent.
     Analyzes a failed run and explains WHY it failed based on the evaluation scores.
     """
-    director = llm_config["director"] # Uses Llama 3.1
+    director = llm_config["director"]
     
     # Identify which dimensions failed (score < 4)
     failures = []
@@ -42,8 +47,14 @@ def diagnose_failure(request: str, response: str, evaluation: EvaluationResult) 
     Provide a concise diagnosis (max 2 sentences) explaining exactly what instruction was missing or misinterpreted.
     """
     
-    diagnosis = director.invoke([HumanMessage(content=prompt)]).content
-    return diagnosis
+    try:
+        diagnosis = director.invoke([HumanMessage(content=prompt)]).content
+        logger.info(f"Diagnosis complete: {diagnosis[:100]}...")
+        return diagnosis
+    except Exception as e:
+        logger.error(f"Diagnosis failed: {e}")
+        return f"Diagnosis unavailable due to error: {str(e)}"
+
 
 def evolve_sop(current_sop: ComplianceSOP, diagnosis: str) -> ComplianceSOP:
     """
@@ -79,19 +90,28 @@ def evolve_sop(current_sop: ComplianceSOP, diagnosis: str) -> ComplianceSOP:
     }}
     """
     
-    response = director.invoke([HumanMessage(content=prompt)])
-    try:
-        data = json.loads(response.content)
-        
-        # Return a new SOP object with the updated prompts
-        # We keep other settings (k, models) the same for now
-        return ComplianceSOP(
-            planner_prompt=data.get("planner_prompt", current_sop.planner_prompt),
-            synthesizer_prompt=data.get("synthesizer_prompt", current_sop.synthesizer_prompt),
-            researcher_retriever_k=current_sop.researcher_retriever_k,
-            conflict_check_enabled=current_sop.conflict_check_enabled,
-            synthesizer_model=current_sop.synthesizer_model
-        )
-    except Exception as e:
-        print(f"Error evolving SOP: {e}")
-        return current_sop
+    max_retries = 3
+    for attempt in range(max_retries):
+        try:
+            response = director.invoke([HumanMessage(content=prompt)])
+            data = parse_llm_json(response.content)
+            
+            if not data:
+                logger.warning(f"Evolution attempt {attempt + 1}/{max_retries}: Empty JSON response. Retrying...")
+                continue
+            
+            new_sop = ComplianceSOP(
+                planner_prompt=data.get("planner_prompt", current_sop.planner_prompt),
+                synthesizer_prompt=data.get("synthesizer_prompt", current_sop.synthesizer_prompt),
+                researcher_retriever_k=current_sop.researcher_retriever_k,
+                conflict_check_enabled=current_sop.conflict_check_enabled,
+                synthesizer_model=current_sop.synthesizer_model
+            )
+            logger.info("SOP evolution successful.")
+            return new_sop
+            
+        except Exception as e:
+            logger.warning(f"Evolution attempt {attempt + 1}/{max_retries} failed: {e}")
+    
+    logger.error(f"All {max_retries} evolution attempts failed. Returning current SOP unchanged.")
+    return current_sop
